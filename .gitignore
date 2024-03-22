@@ -132,3 +132,4 @@ dist
 .prettierrc
 yarn.lock
 .vscode/launch.json
+public/robots.txt

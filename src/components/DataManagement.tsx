@@ -1,6 +1,9 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
 import { filterSlice, type FilterState } from './StateManagement'
+import axios from 'axios'
+
+axios.defaults.withCredentials = true
 
 export interface tradingDataDef {
   coinMarketCapMapping: any
@@ -282,7 +285,9 @@ function LoadScreeningData() {
       setScreeningData(formattedData)
     }
     return () => {
-      socket.close()
+      if (socket.readyState === 1) {
+        socket.close()
+      }
     }
   }, [])
 
@@ -463,20 +468,19 @@ function LoadOrderBook(throtle: number = 500) {
   const [orderBookData, setOrderBookData] = useState<OrderBookData>({})
   let lastRefreshTmtstmp = Date.now()
 
-  useEffect(() => {
-    async function fetchOrderBookData() {
-      try {
-        const orderBookResponse = await fetch(
-          `http://127.0.0.1:8000/order_book/?exchange=${exchange}&pair=${pair}`,
-        )
-        const responseData = await orderBookResponse.json()
-        setOrderBookData(formatOrderBook(responseData, false))
-      } catch (error) {
-        setOrderBookData({})
-        console.error('Error fetching Order Book data:', error)
-      }
+  async function fetchOrderBookData() {
+    try {
+      const orderBookResponse = await axios.get(
+        `http://127.0.0.1:8000/order_book/?exchange=${exchange}&pair=${pair}`,
+      )
+      setOrderBookData(formatOrderBook(orderBookResponse.data, false))
+    } catch (error) {
+      setOrderBookData({})
+      console.error('Error fetching Order Book data:', error)
     }
+  }
 
+  useEffect(() => {
     const wsUrl = `ws://localhost:8768?exchange=${exchange}?book=${pair.replace('/', '-')}`
     const socket = new WebSocket(wsUrl)
 
@@ -500,16 +504,18 @@ function LoadOrderBook(throtle: number = 500) {
         }
       }
     }
-
     const orderBookInterval = setInterval(() => {
       fetchOrderBookData()
     }, 5000)
     fetchOrderBookData()
     return () => {
-      socket.close()
+      if (socket.readyState === 1) {
+        socket.close()
+      }
       clearInterval(orderBookInterval)
     }
   }, [exchange, pair])
+
   return orderBookData
 }
 
