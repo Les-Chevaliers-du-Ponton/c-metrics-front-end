@@ -5,6 +5,9 @@ import axios from 'axios'
 
 axios.defaults.withCredentials = true
 
+export const HOST = '34.230.57.182'
+export const PORT = 8000
+
 export interface tradingDataDef {
   coinMarketCapMapping: any
   cryptoMetaData: any
@@ -126,7 +129,7 @@ function LoadStaticData(endpoint: string) {
   useEffect(() => {
     async function getData() {
       try {
-        const url = `http://127.0.0.1:8000/${endpoint}/`
+        const url = `http://${HOST}:${PORT}/${endpoint}/`
         const response = await fetch(url)
         const responseData = await response.json()
         setData(responseData)
@@ -151,7 +154,7 @@ function LoadCryptoMetaData(coinMarketCapMapping: any) {
   useEffect(() => {
     async function getData() {
       try {
-        const url = `http://127.0.0.1:8000/coinmarketcap_crypto_meta/?crypto_coinmarketcap_id=${coinMarketCapInfo.id}`
+        const url = `http://${HOST}:${PORT}/coinmarketcap_crypto_meta/?crypto_coinmarketcap_id=${coinMarketCapInfo.id}`
         const response = await fetch(url)
         const responseData = await response.json()
         setMetaData(responseData)
@@ -173,7 +176,7 @@ function LoadMarkets() {
     async function getMarkets() {
       try {
         setData([])
-        const url = `http://127.0.0.1:8000/markets/?exchange=${exchange}`
+        const url = `http://${HOST}:${PORT}/markets/?exchange=${exchange}`
         const response = await fetch(url)
         const responseData = await response.json()
         setData(responseData)
@@ -199,7 +202,7 @@ function LoadOrders() {
   )
   useEffect(() => {
     async function fetchOrders() {
-      const ordersEndPoint = 'http://127.0.0.1:8000/orders/?format=json'
+      const ordersEndPoint = 'http://34.230.57.182:8000/orders/?format=json'
       try {
         const response = await fetch(ordersEndPoint)
         setOrders(await response.json())
@@ -218,7 +221,7 @@ function LoadTrades() {
 
   useEffect(() => {
     async function fetchTrades() {
-      const ordersEndPoint = 'http://127.0.0.1:8000/trades/?format=json'
+      const ordersEndPoint = `http://${HOST}:${PORT}/trades/?format=json`
       try {
         const response = await fetch(ordersEndPoint)
         setTrades(await response.json())
@@ -247,7 +250,7 @@ function LoadNews(coinMarketCapMapping: any) {
         if (cryptoInfo !== undefined) {
           const searchTerm = `${cryptoInfo.name} crypto`
           const response = await fetch(
-            `http://127.0.0.1:8000/news/?search_term=${searchTerm}`,
+            `http://${HOST}:${PORT}/news/?search_term=${searchTerm}`,
           )
           const data = await response.json()
           setNewsData(data)
@@ -343,7 +346,7 @@ function LoadOhlcvData() {
       }
       try {
         const ohlc_response = await fetch(
-          `http://127.0.0.1:8000/ohlc/?exchange=${exchange}&pair=${pair}&timeframe=${ohlcPeriod}`,
+          `http://${HOST}:${PORT}/ohlc/?exchange=${exchange}&pair=${pair}&timeframe=${ohlcPeriod}`,
         )
         const newOhlcData = await ohlc_response.json()
         ohlcData[pair] = newOhlcData
@@ -382,7 +385,7 @@ function LoadLatestPrices(trades: Trade[]) {
     if (pair !== undefined) {
       try {
         const response = await fetch(
-          `http://127.0.0.1:8000/public_trades/?exchange=coinbase&pair=${pair}`,
+          `http://${HOST}:${PORT}/public_trades/?exchange=coinbase&pair=${pair}`,
         )
         const latestPublicTrades = await response.json()
         const latestPrice =
@@ -471,7 +474,7 @@ function LoadOrderBook(throtle: number = 500) {
   async function fetchOrderBookData() {
     try {
       const orderBookResponse = await axios.get(
-        `http://127.0.0.1:8000/order_book/?exchange=${exchange}&pair=${pair}`,
+        `http://${HOST}:${PORT}/order_book/?exchange=${exchange}&pair=${pair}`,
       )
       setOrderBookData(formatOrderBook(orderBookResponse.data, false))
     } catch (error) {
@@ -481,7 +484,8 @@ function LoadOrderBook(throtle: number = 500) {
   }
 
   useEffect(() => {
-    const wsUrl = `ws://localhost:8768?exchange=${exchange}?book=${pair.replace('/', '-')}`
+    const fomattedPair = pair.replace('/', '-').toUpperCase()
+    const wsUrl = `ws://${HOST}:${PORT}/ws/live_data/?pairs=${exchange.toUpperCase()}-${fomattedPair}`
     const socket = new WebSocket(wsUrl)
 
     socket.onerror = () => {
