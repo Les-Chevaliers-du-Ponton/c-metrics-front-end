@@ -17,7 +17,7 @@ import {
   Tooltip,
   Typography,
   alpha,
-  styled
+  styled,
 } from '@mui/material'
 import Divider from '@mui/material/Divider'
 import { ColDef, GridReadyEvent, SideBarDef } from 'ag-grid-community'
@@ -107,7 +107,7 @@ function CustomizedMenus(props: CustomCellRendererProps) {
           size="small"
           onClick={handleViewOnChart}
         >
-          < CandlestickChartOutlinedIcon />
+          <CandlestickChartOutlinedIcon />
         </IconButton>
       </Tooltip>
       <Tooltip title="Order Options">
@@ -287,7 +287,6 @@ function OrderTable({ orders }: TableProps) {
     ])
     setDefaultGridSettings()
   }, [orders, pair, filterState.selectedOrder])
-
 
   const displayChartForSelectedOrder = (order: Order) => {
     if (order) {
