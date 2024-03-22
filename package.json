@@ -74,7 +74,8 @@
     "eslint": "^8.55.0"
   },
   "allowedHosts": [
-    "localhost"
+    "localhost",
+    "34.230.57.182"
   ],
   "resolutions": {
     "**/@typescript-eslint/eslint-plugin": "^4.1.1",
