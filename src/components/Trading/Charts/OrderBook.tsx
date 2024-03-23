@@ -4,7 +4,7 @@ import HighchartsReact, {
 } from 'highcharts-react-official'
 import Highcharts from 'highcharts/highstock'
 import { useEffect, useRef, useState } from 'react'
-import { OrderBookData } from '../../DataManagement'
+import { getTopOfBook, OrderBookData } from '../../DataManagement'
 
 interface BookChartProps {
   data: OrderBookData
@@ -13,20 +13,12 @@ interface BookChartProps {
   pairScoreDetails: any
 }
 
-function getFirst(side: string, data: OrderBookData) {
-  if (side === 'bid') {
-    const size = Object.keys(data.bid).length - 1
-    return Number(Object.keys(data.bid).sort()[size])
-  }
-  return Number(Object.keys(data.ask).sort()[0])
-}
-
 export function OrderBookChart(props: BookChartProps) {
   const orderBookChartRef = useRef<HighchartsReactRefObject>(null)
   const bidAskFontSize = '13px'
 
-  const [bid, setBid] = useState(getFirst('bid', props.data))
-  const [ask, setAsk] = useState(getFirst('ask', props.data))
+  const [bid, setBid] = useState(getTopOfBook('bid', props.data))
+  const [ask, setAsk] = useState(getTopOfBook('ask', props.data))
   const [spread, setSpread] = useState(0)
   const [chartOptions] = useState<any>({
     boost: {
@@ -157,8 +149,8 @@ export function OrderBookChart(props: BookChartProps) {
   })
 
   function getOverSidePrice(price: number) {
-    const bid = getFirst('bid', props.data)
-    const ask = getFirst('ask', props.data)
+    const bid = getTopOfBook('bid', props.data)
+    const ask = getTopOfBook('ask', props.data)
     if (price >= ask) {
       const distance = price / ask - 1
       return ['bid', bid - distance * bid]
@@ -170,8 +162,8 @@ export function OrderBookChart(props: BookChartProps) {
 
   function handleOut() {
     if (orderBookChartRef.current) {
-      const newBid = getFirst('bid', props.data)
-      const newAsk = getFirst('ask', props.data)
+      const newBid = getTopOfBook('bid', props.data)
+      const newAsk = getTopOfBook('ask', props.data)
       const newSpread = newAsk / newBid - 1
       setBid(newBid)
       setAsk(newAsk)
@@ -203,8 +195,8 @@ export function OrderBookChart(props: BookChartProps) {
 
   function handleHover(this: any) {
     const overSidePrice = getOverSidePrice(this.y)
-    const bid = getFirst('bid', props.data)
-    const ask = getFirst('ask', props.data)
+    const bid = getTopOfBook('bid', props.data)
+    const ask = getTopOfBook('ask', props.data)
     if (orderBookChartRef.current) {
       handleOut()
       if (overSidePrice !== undefined) {
@@ -272,8 +264,14 @@ export function OrderBookChart(props: BookChartProps) {
   }
 
   useEffect(() => {
-    const newBid = getFirst('bid', props.data)
-    const newAsk = getFirst('ask', props.data)
+    let newBid = getTopOfBook('bid', props.data)
+    let newAsk = getTopOfBook('ask', props.data)
+    if (newBid > newAsk) {
+      newBid = newAsk
+    }
+    if (newAsk < newBid) {
+      newAsk = newBid
+    }
     const newSpread = newAsk / newBid - 1
     setBid(newBid)
     setAsk(newAsk)

@@ -206,7 +206,7 @@ function LoadOrders() {
   )
   useEffect(() => {
     async function fetchOrders() {
-      const ordersEndPoint = 'http://34.230.57.182:8000/orders/?format=json'
+      const ordersEndPoint = `http://${HOST}:${PORT}/orders/?format=json`
       try {
         const response = await fetch(ordersEndPoint)
         setOrders(await response.json())
@@ -434,12 +434,25 @@ function LoadLatestPrices(trades: Trade[]) {
   return latestPrices
 }
 
+export function getTopOfBook(side: string, data: OrderBookData) {
+  if (side === 'bid') {
+    const size = Object.keys(data.bid).length - 1
+    return Number(Object.keys(data.bid).map(Number).sort()[size])
+  }
+  return Number(
+    Object.keys(data.ask)
+      .map(Number)
+      .sort((a, b) => a - b)[0],
+  )
+}
+
 function LoadOrderBook() {
   const filterState = useSelector(
     (state: { filters: FilterState }) => state.filters,
   )
   const [orderBookData, setOrderBookData] = useState<OrderBookData>()
   const [socketData, setSocketData] = useState<any>(null)
+  const [resetSwitch, setResetSwitch] = useState<boolean>(false)
 
   function formatOrderBook(rawOrderBook: any) {
     const formattedBook: any = { bid: {}, ask: {} }
@@ -454,6 +467,8 @@ function LoadOrderBook() {
 
   function formatLiveBookFeed() {
     if (orderBookData) {
+      const bestBid = getTopOfBook('bid', orderBookData)
+      const bestAsk = getTopOfBook('ask', orderBookData)
       const data = JSON.parse(socketData)
       ;['bid', 'ask'].forEach((side: string) => {
         data[side].forEach((newRecord: [number, number]) => {
@@ -462,19 +477,28 @@ function LoadOrderBook() {
           if (volume === 0) {
             delete orderBookData[side][price]
           } else {
-            orderBookData[side][price] = volume
+            if (side === 'bid' && (bestBid > bestAsk || price > bestAsk)) {
+              delete orderBookData['ask'][bestAsk]
+            } else if (
+              side === 'ask' &&
+              (bestAsk < bestBid || price < bestBid)
+            ) {
+              delete orderBookData['bid'][bestBid]
+            } else {
+              orderBookData[side][price] = volume
+            }
           }
         })
       })
+      setOrderBookData(orderBookData)
     }
-    setOrderBookData(orderBookData)
   }
 
   useEffect(() => {
     async function fetchOrderBookData() {
       try {
         const orderBookResponse = await axios.get(
-          `http://34.230.57.182:8000/order_book/?exchange=${filterState.exchange}&pair=${filterState.pair}`,
+          `http://${HOST}:${PORT}/order_book/?exchange=${filterState.exchange}&pair=${filterState.pair}`,
         )
         const formattedBook = formatOrderBook(orderBookResponse.data)
         setOrderBookData(formattedBook)
@@ -484,7 +508,8 @@ function LoadOrderBook() {
       }
     }
     fetchOrderBookData()
-  }, [filterState.exchange, filterState.pair])
+    setResetSwitch(false)
+  }, [resetSwitch, filterState.exchange, filterState.pair])
 
   useEffect(() => {
     if (orderBookData) {
