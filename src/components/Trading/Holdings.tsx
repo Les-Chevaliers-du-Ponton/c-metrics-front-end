@@ -65,7 +65,6 @@ function HoldingsTable(data: { tradingData: tradingDataDef }) {
         hasOpenSells: orderHasOpenSells(pair),
       }),
     )
-    console.log(updatedFormattedHoldings)
     updatedFormattedHoldings = updatedFormattedHoldings.sort((a, b) =>
       typeof a.usdValue === 'string' || typeof b.usdValue === 'string'
         ? 0
