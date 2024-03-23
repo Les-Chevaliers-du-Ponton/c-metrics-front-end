@@ -13,11 +13,20 @@ interface BookChartProps {
   pairScoreDetails: any
 }
 
+function getFirst(side: string, data: OrderBookData) {
+  if (side === 'bid') {
+    const size = Object.keys(data.bid).length - 1
+    return Number(Object.keys(data.bid).sort()[size])
+  }
+  return Number(Object.keys(data.ask).sort()[0])
+}
+
 export function OrderBookChart(props: BookChartProps) {
   const orderBookChartRef = useRef<HighchartsReactRefObject>(null)
   const bidAskFontSize = '13px'
-  const [bid, setBid] = useState(props.data.bid[0][1])
-  const [ask, setAsk] = useState(props.data.ask[0][1])
+
+  const [bid, setBid] = useState(getFirst('bid', props.data))
+  const [ask, setAsk] = useState(getFirst('ask', props.data))
   const [spread, setSpread] = useState(0)
   const [chartOptions] = useState<any>({
     boost: {
@@ -58,6 +67,11 @@ export function OrderBookChart(props: BookChartProps) {
         },
         plotLines: [
           {
+            area: {
+              fillOpacity: 0.2,
+              lineWidth: 1,
+              step: 'center',
+            },
             color: 'white',
             value: (ask + bid) / 2,
             label: {
@@ -130,6 +144,7 @@ export function OrderBookChart(props: BookChartProps) {
     },
     plotOptions: {
       series: {
+        // cumulative: true,
         point: {
           events: {
             mouseOver: handleHover,
@@ -142,8 +157,8 @@ export function OrderBookChart(props: BookChartProps) {
   })
 
   function getOverSidePrice(price: number) {
-    const bid = props.data.bid[0][1]
-    const ask = props.data.ask[0][1]
+    const bid = getFirst('bid', props.data)
+    const ask = getFirst('ask', props.data)
     if (price >= ask) {
       const distance = price / ask - 1
       return ['bid', bid - distance * bid]
@@ -155,8 +170,8 @@ export function OrderBookChart(props: BookChartProps) {
 
   function handleOut() {
     if (orderBookChartRef.current) {
-      const newBid = props.data.bid[0][1]
-      const newAsk = props.data.ask[0][1]
+      const newBid = getFirst('bid', props.data)
+      const newAsk = getFirst('ask', props.data)
       const newSpread = newAsk / newBid - 1
       setBid(newBid)
       setAsk(newAsk)
@@ -188,14 +203,13 @@ export function OrderBookChart(props: BookChartProps) {
 
   function handleHover(this: any) {
     const overSidePrice = getOverSidePrice(this.y)
-    const bids = props.data.bid
-    const bid = bids[0][1]
-    const ask = props.data.ask[0][1]
+    const bid = getFirst('bid', props.data)
+    const ask = getFirst('ask', props.data)
     if (orderBookChartRef.current) {
       handleOut()
       if (overSidePrice !== undefined) {
         const hoverBid = Math.max(
-          bids[bids.length - 1][1],
+          0,
           overSidePrice[0] === 'bid' ? overSidePrice[1] : this.y,
         )
         const hoverAsk = overSidePrice[0] === 'ask' ? overSidePrice[1] : this.y
@@ -236,9 +250,30 @@ export function OrderBookChart(props: BookChartProps) {
     }
   }
 
+  function getFormattedBook(side: string) {
+    let cumulativeVolume = 0
+    let sortedBookSide = []
+    let formattedBookSide: number[][] = []
+    if (side === 'bid') {
+      sortedBookSide = Object.entries(props.data.bid)
+        .map(([key, value]) => [Number(key), value])
+        .sort((a, b) => b[0] - a[0])
+    } else {
+      sortedBookSide = Object.entries(props.data.ask)
+        .map(([key, value]) => [Number(key), value])
+        .sort((a, b) => a[0] - b[0])
+    }
+    formattedBookSide.push([0, sortedBookSide[0][0]])
+    sortedBookSide.forEach((record: number[]) => {
+      ;(cumulativeVolume += record[1]),
+        formattedBookSide.push([cumulativeVolume, record[0]])
+    })
+    return formattedBookSide
+  }
+
   useEffect(() => {
-    const newBid = props.data.bid[0][1]
-    const newAsk = props.data.ask[0][1]
+    const newBid = getFirst('bid', props.data)
+    const newAsk = getFirst('ask', props.data)
     const newSpread = newAsk / newBid - 1
     setBid(newBid)
     setAsk(newAsk)
@@ -248,8 +283,9 @@ export function OrderBookChart(props: BookChartProps) {
       if (chart.xAxis[0].max) {
         chart.xAxis[0].setExtremes(0, chart.xAxis[0].max)
       }
-      chart.series[0].setData(props.data.bid)
-      chart.series[1].setData(props.data.ask)
+
+      chart.series[0].setData(getFormattedBook('bid'))
+      chart.series[1].setData(getFormattedBook('ask'))
       chart.update({
         plotOptions: {
           series: {
@@ -277,7 +313,7 @@ export function OrderBookChart(props: BookChartProps) {
         id: 'central-book-hover-line',
       })
     }
-  }, [props.data, props.pair])
+  }, [JSON.stringify(props.data), props.pair])
 
   useEffect(() => {
     const chart = orderBookChartRef!.current!.chart

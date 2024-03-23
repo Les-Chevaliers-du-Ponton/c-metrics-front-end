@@ -1,21 +1,4 @@
-import ChevronRightIcon from '@mui/icons-material/ChevronRight'
-import MailIcon from '@mui/icons-material/Mail'
-import InboxIcon from '@mui/icons-material/MoveToInbox'
-import {
-  Box,
-  CssBaseline,
-  Divider,
-  Drawer,
-  IconButton,
-  List,
-  ListItem,
-  ListItemButton,
-  ListItemIcon,
-  ListItemText,
-  Tab,
-  Tabs,
-  styled,
-} from '@mui/material'
+import { Box, CssBaseline, Tab, Tabs } from '@mui/material'
 import React from 'react'
 import { Col, Container, Row } from 'react-bootstrap'
 import { Responsive, WidthProvider } from 'react-grid-layout'
@@ -35,10 +18,8 @@ import Holdings from '../components/Trading/Holdings'
 import News from '../components/Trading/News'
 import Orders from '../components/Trading/Orders'
 import Screening from '../components/Trading/Screening'
-import Trades from '../components/Trading/TradeHistory'
 import MiniDrawer from '../components/Trading/SideBar'
-
-const ResponsiveGridLayout = WidthProvider(Responsive)
+import Trades from '../components/Trading/TradeHistory'
 
 function BottomLeftContainer(data: { tradingData: tradingDataDef }) {
   const dispatch = useDispatch()
@@ -100,15 +81,6 @@ function BottomRightContainer(data: { tradingData: tradingDataDef }) {
 
 function Trading() {
   const tradingData: tradingDataDef = GetTradingData()
-
-  const DrawerHeader = styled('div')(({ theme }) => ({
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'flex-end',
-    padding: theme.spacing(0, 1),
-    // necessary for content to be below app bar
-    ...theme.mixins.toolbar,
-  }))
 
   return (
     <div style={{ overflow: 'hidden' }}>

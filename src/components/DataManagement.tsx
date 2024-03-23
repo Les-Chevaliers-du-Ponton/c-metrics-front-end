@@ -1,7 +1,7 @@
+import axios from 'axios'
 import { useEffect, useMemo, useState } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
 import { filterSlice, type FilterState } from './StateManagement'
-import axios from 'axios'
 
 axios.defaults.withCredentials = true
 
@@ -26,7 +26,11 @@ export interface tradingDataDef {
 
 export type OhlcData = number[][]
 
-export type OrderBookData = Record<string, Array<[number, number]>>
+export type OrderBookData = {
+  [key: string]: {
+    [key: string]: number
+  }
+}
 
 export interface NewsArticle {
   date: string
@@ -430,95 +434,91 @@ function LoadLatestPrices(trades: Trade[]) {
   return latestPrices
 }
 
-function formatOrderBook(rawOrderBook: any, isWebSocketFeed: boolean) {
-  const formattedBook: OrderBookData = { bid: [], ask: [] }
-  ;['bid', 'ask'].forEach((side: string) => {
-    let cumulativeVolume = 0
-    if (isWebSocketFeed) {
-      const sortedPrices =
-        side === 'bid'
-          ? Object.keys(rawOrderBook[side]).sort(
-              (a, b) => parseFloat(b) - parseFloat(a),
-            )
-          : Object.keys(rawOrderBook[side]).sort(
-              (a, b) => parseFloat(a) - parseFloat(b),
-            )
-      formattedBook[side].push([0, parseFloat(sortedPrices[0])])
-      sortedPrices.forEach((price: string) => {
-        cumulativeVolume += rawOrderBook[side][price]
-        formattedBook[side].push([cumulativeVolume, parseFloat(price)])
-      })
-    } else {
-      formattedBook[side].push([0, rawOrderBook[side + 's'][0][0]])
-      rawOrderBook[side + 's'].forEach((level: [number, number, number]) => {
-        cumulativeVolume += level[1]
-        formattedBook[side].push([cumulativeVolume, level[0]])
-      })
-    }
-  })
-  return formattedBook
-}
-
-function LoadOrderBook(throtle: number = 500) {
+function LoadOrderBook() {
   const filterState = useSelector(
     (state: { filters: FilterState }) => state.filters,
   )
+  const [orderBookData, setOrderBookData] = useState<OrderBookData>()
+  const [socketData, setSocketData] = useState<any>(null)
 
-  const [exchange, pair] = useMemo(
-    () => [filterState.exchange, filterState.pair],
-    [filterState.exchange, filterState.pair],
-  )
-  const [orderBookData, setOrderBookData] = useState<OrderBookData>({})
-  let lastRefreshTmtstmp = Date.now()
+  function formatOrderBook(rawOrderBook: any) {
+    const formattedBook: any = { bid: {}, ask: {} }
+    ;['bids', 'asks'].forEach((side: string) => {
+      rawOrderBook[side].forEach((level: number[]) => {
+        const formattedSide = side.slice(0, -1)
+        formattedBook[formattedSide][level[0]] = level[1]
+      })
+    })
+    return formattedBook
+  }
 
-  async function fetchOrderBookData() {
-    try {
-      const orderBookResponse = await axios.get(
-        `http://${HOST}:${PORT}/order_book/?exchange=${exchange}&pair=${pair}`,
-      )
-      setOrderBookData(formatOrderBook(orderBookResponse.data, false))
-    } catch (error) {
-      setOrderBookData({})
-      console.error('Error fetching Order Book data:', error)
+  function formatLiveBookFeed() {
+    if (orderBookData) {
+      const data = JSON.parse(socketData)
+      ;['bid', 'ask'].forEach((side: string) => {
+        data[side].forEach((newRecord: [number, number]) => {
+          const price = newRecord[0]
+          const volume = newRecord[1]
+          if (volume === 0) {
+            delete orderBookData[side][price]
+          } else {
+            orderBookData[side][price] = volume
+          }
+        })
+      })
     }
+    setOrderBookData(orderBookData)
   }
 
   useEffect(() => {
-    const fomattedPair = pair.replace('/', '-').toUpperCase()
-    const wsUrl = `ws://${HOST}:${PORT}/ws/live_data/?pairs=${exchange.toUpperCase()}-${fomattedPair}`
-    const socket = new WebSocket(wsUrl)
+    async function fetchOrderBookData() {
+      try {
+        const orderBookResponse = await axios.get(
+          `http://34.230.57.182:8000/order_book/?exchange=${filterState.exchange}&pair=${filterState.pair}`,
+        )
+        const formattedBook = formatOrderBook(orderBookResponse.data)
+        setOrderBookData(formattedBook)
+      } catch (error) {
+        setOrderBookData({})
+        console.error('Error fetching Order Book data:', error)
+      }
+    }
+    fetchOrderBookData()
+  }, [filterState.exchange, filterState.pair])
 
-    socket.onerror = () => {
-      console.warn(
-        `Could not implement websocket connection for ${pair} on ${exchange}. Will default back to periodic API refresh.`,
-      )
-      fetchOrderBookData()
-    }
-    socket.onopen = () => {
-      clearInterval(orderBookInterval)
-    }
-    socket.onmessage = (event) => {
-      if (event.data != 'heartbeat') {
-        if (Date.now() - lastRefreshTmtstmp > throtle) {
-          lastRefreshTmtstmp = Date.now()
+  useEffect(() => {
+    if (orderBookData) {
+      const fomattedPair = filterState.pair.replace('/', '-').toUpperCase()
+      const wsUrl = `ws://${HOST}:${PORT}/ws/live_data/?pairs=${filterState.exchange.toUpperCase()}-${fomattedPair}`
+      const socket = new WebSocket(wsUrl)
+      socket.onerror = () => {
+        console.warn(
+          `Could not implement websocket connection for ${filterState.pair} on ${filterState.exchange}. Will default back to periodic API refresh.`,
+        )
+      }
+      socket.onopen = () => {
+        console.log(`Connected to real-time service`)
+      }
+      socket.onmessage = (event) => {
+        const newData = JSON.parse(event.data)
+        if (newData.delta) {
           const newData = JSON.parse(event.data)
-          if (Object.keys(newData).includes('book')) {
-            setOrderBookData(formatOrderBook(newData.book.book, true))
-          }
+          setSocketData(newData['delta'])
+        }
+      }
+      return () => {
+        if (socket.readyState === WebSocket.OPEN) {
+          socket.close()
         }
       }
     }
-    const orderBookInterval = setInterval(() => {
-      fetchOrderBookData()
-    }, 5000)
-    fetchOrderBookData()
-    return () => {
-      if (socket.readyState === 1) {
-        socket.close()
-      }
-      clearInterval(orderBookInterval)
+  }, [orderBookData])
+
+  useEffect(() => {
+    if (socketData) {
+      formatLiveBookFeed()
     }
-  }, [exchange, pair])
+  }, [socketData])
 
   return orderBookData
 }
