@@ -80,7 +80,7 @@ function HoldingsTable(data: { tradingData: tradingDataDef }) {
       gridRef.current.api.refreshCells({ suppressFlash: false })
       gridRef.current.api.flashCells()
     }
-  }, [JSON.stringify(data.tradingData.latestPrices), currentHoldings])
+  }, [currentHoldings])
 
   const handleClick = (row: any) => {
     dispatch(filterSlice.actions.setPair(row.data?.pair))

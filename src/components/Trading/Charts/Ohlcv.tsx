@@ -6,6 +6,7 @@ import Highcharts from 'highcharts/highstock'
 import IndicatorsAll from 'highcharts/indicators/indicators-all'
 import Indicators from 'highcharts/indicators/indicators-all.js'
 import VDP from 'highcharts/indicators/volume-by-price'
+import HighchartsAccessibility from 'highcharts/modules/accessibility'
 import AnnotationsAdvanced from 'highcharts/modules/annotations-advanced.js'
 import HighchartsBoost from 'highcharts/modules/boost'
 import FullScreen from 'highcharts/modules/full-screen.js'
@@ -21,6 +22,7 @@ import { FilterState } from '../../StateManagement'
 import { OhlcPeriodsFilter } from '../Header'
 import { CHART_HEIGHT } from './common'
 
+HighchartsAccessibility(Highcharts)
 IndicatorsAll(Highcharts)
 HighchartsBoost(Highcharts)
 StockTools(Highcharts)
@@ -67,7 +69,7 @@ export function CryptoStationOhlcChart(props: OhlcChartProps) {
         lineWidth: 0,
         gridLineWidth: 0.05,
         events: {
-          afterSetExtremes: afterSetXExtremes,
+          afterSetExtremes: afterSetExtremes,
         },
         crosshair: {
           color: 'gray',
@@ -217,7 +219,7 @@ export function CryptoStationOhlcChart(props: OhlcChartProps) {
       }
       chart.series[0].setData(ohlcv)
     }
-  }, [chartOptions, props.data])
+  }, [chartOptions, JSON.stringify(props.data.ohlcvData)])
 
   useEffect(() => {
     const chart = ohlcvChartRef.current!.chart
@@ -288,11 +290,11 @@ export function CryptoStationOhlcChart(props: OhlcChartProps) {
     props.selectedOrder,
   ])
 
-  function afterSetXExtremes(this: any, e: any) {
+  function afterSetExtremes(this: any, e: any) {
     // TODO: find better implementation
-    // const data = props.data.ohlcvData[props.pair]
-    // const latestTimestamp = data![data!.length - 1][0]
-    // this.setExtremes(this.min, latestTimestamp)
+    const data = props.data.ohlcvData[props.pair]
+    const latestTimestamp = data![data!.length - 1][0]
+    this.setExtremes(this.min, latestTimestamp)
   }
 
   // useEffect(() => {
@@ -314,11 +316,26 @@ export function CryptoStationOhlcChart(props: OhlcChartProps) {
 
 export function TradingViewWidget(props: TradingViewProps) {
   const container = useRef()
+  const [firstRender, setFirstRender] = useState<boolean>(true)
+
+  useEffect(() => {
+    setFirstRender(false)
+  }, [])
 
   useEffect(() => {
     const currentContainer = container.current as any
-
     const htmlChildren = Array.from(currentContainer!.children || [])
+
+    function clearUp() {
+      if (htmlChildren && !firstRender) {
+        htmlChildren.forEach((child: any) => {
+          try {
+            currentContainer.removeChild(child)
+          } catch {}
+        })
+      }
+    }
+
     const script = document.createElement('script')
     script.src =
       'https://s3.tradingview.com/external-embedding/embed-widget-advanced-chart.js'
@@ -348,20 +365,27 @@ export function TradingViewWidget(props: TradingViewProps) {
           "support_host": "https://www.tradingview.com"
         }`
     if (currentContainer && htmlChildren) {
+      clearUp()
       currentContainer.appendChild(script)
+    }
+    return () => {
+      clearUp()
     }
   }, [props.pair, props.exchange])
 
   return (
-    <div
-      className="tradingview-widget-container"
-      ref={container! as any}
-      style={{ height: '100%', width: '100%' }}
-    >
+    <div style={{ height: '559px' }}>
       <div
-        className="tradingview-widget-container__widget"
-        style={{ height: 'calc(100% - 32px)', width: '100%' }}
-      ></div>
+        className="tradingview-widget-container"
+        ref={container! as any}
+        key="tradingViewContainer"
+        style={{ height: '100%', width: '100%' }}
+      >
+        <div
+          className="tradingview-widget-container__widget"
+          style={{ height: 'calc(100% - 32px)', width: '100%' }}
+        ></div>
+      </div>
     </div>
   )
 }
@@ -408,7 +432,7 @@ export function OhlcvChart(props: OhlcChartProps) {
             variant={chartType === 'crypto-station' ? 'contained' : 'text'}
             onClick={() => setChartType('crypto-station')}
           >
-            Crypto Station
+            C-Metrics
           </Button>
           <Button
             sx={{ fontSize: 10 }}

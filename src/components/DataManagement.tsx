@@ -435,14 +435,11 @@ function LoadLatestPrices(trades: Trade[]) {
 }
 
 export function getTopOfBook(side: string, data: OrderBookData) {
-  if (side === 'bid') {
-    const size = Object.keys(data.bid).length - 1
-    return Number(Object.keys(data.bid).map(Number).sort()[size])
-  }
+  const index = side === 'bid' ? Object.keys(data.bid).length - 1 : 0
   return Number(
-    Object.keys(data.ask)
+    Object.keys(data[side])
       .map(Number)
-      .sort((a, b) => a - b)[0],
+      .sort((a, b) => a - b)[index],
   )
 }
 
@@ -469,6 +466,7 @@ function LoadOrderBook() {
     if (orderBookData) {
       const bestBid = getTopOfBook('bid', orderBookData)
       const bestAsk = getTopOfBook('ask', orderBookData)
+      const mid = (bestBid + bestAsk) / 2
       const data = JSON.parse(socketData)
       ;['bid', 'ask'].forEach((side: string) => {
         data[side].forEach((newRecord: [number, number]) => {
@@ -484,6 +482,9 @@ function LoadOrderBook() {
               (bestAsk < bestBid || price < bestBid)
             ) {
               delete orderBookData['bid'][bestBid]
+            } else if (mid < bestBid || mid > bestAsk) {
+              delete orderBookData['bid'][bestBid]
+              delete orderBookData['ask'][bestAsk]
             } else {
               orderBookData[side][price] = volume
             }
@@ -495,6 +496,7 @@ function LoadOrderBook() {
   }
 
   useEffect(() => {
+    // setOrderBookData(undefined)
     async function fetchOrderBookData() {
       try {
         const orderBookResponse = await axios.get(
