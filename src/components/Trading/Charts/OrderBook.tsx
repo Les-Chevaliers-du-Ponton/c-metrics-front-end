@@ -8,6 +8,7 @@ import { getTopOfBook, OrderBookData } from '../../DataManagement'
 
 interface BookChartProps {
   data: OrderBookData
+  lastClose: number
   pair: string
   selectedOrder: [string, string, string]
   pairScoreDetails: any
@@ -115,6 +116,15 @@ export function OrderBookChart(props: BookChartProps) {
         threshold: Infinity,
         type: 'area',
       },
+      // {
+      //   name: 'Last Trade',
+      //   data: [54.4],
+      //   marker: {
+      //     symbol: 'cross',
+      //     lineColor: null,
+      //     lineWidth: 2
+      //   }
+      // }
     ],
     stockTools: {
       gui: {
@@ -281,7 +291,6 @@ export function OrderBookChart(props: BookChartProps) {
       if (chart.xAxis[0].max) {
         chart.xAxis[0].setExtremes(0, chart.xAxis[0].max)
       }
-
       chart.series[0].setData(getFormattedBook('bid'))
       chart.series[1].setData(getFormattedBook('ask'))
       chart.update({

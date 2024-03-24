@@ -2,6 +2,7 @@ import FullscreenIcon from '@mui/icons-material/Fullscreen'
 import { ThemeProvider, Tooltip, createTheme } from '@mui/material'
 import { deepPurple } from '@mui/material/colors'
 import { styled } from '@mui/material/styles'
+import HighchartsAccessibility from 'highcharts/modules/accessibility'
 import { useEffect, useMemo, useState } from 'react'
 import { Col, Row } from 'react-bootstrap'
 import { FullScreen, useFullScreenHandle } from 'react-full-screen'
@@ -15,6 +16,9 @@ import { OhlcvChart } from './Charts/Ohlcv'
 import { OrderBookChart } from './Charts/OrderBook'
 import { CHART_HEIGHT } from './Charts/common'
 import { PairSelectionWidget } from './Header'
+import Highcharts from 'highcharts'
+
+HighchartsAccessibility(Highcharts)
 
 const customTheme = createTheme({
   palette: {
@@ -141,11 +145,12 @@ export function TradingChart(data: { tradingData: tradingDataDef }) {
             />
           </Col>
           <Col sm={2} style={{ zIndex: 2 }}>
-            {data.tradingData.orderBookData &&
-              Object.keys(data.tradingData.orderBookData).includes('bid') &&
-              data.tradingData.orderBookData.bid.length !== 0 && (
+            {data.tradingData.publicMarketData &&
+              Object.keys(data.tradingData.publicMarketData).includes('bid') &&
+              data.tradingData.publicMarketData.bid.length !== 0 && (
                 <OrderBookChart
-                  data={data.tradingData.orderBookData}
+                  data={data.tradingData.publicMarketData}
+                  lastClose={0}
                   pair={pair}
                   selectedOrder={selectedOrder}
                   pairScoreDetails={pairScoreDetails}
