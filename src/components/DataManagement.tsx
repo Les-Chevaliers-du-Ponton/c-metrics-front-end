@@ -19,7 +19,7 @@ export interface tradingDataDef {
   screeningData: any
   noDataAnimation: any
   ohlcvData: { [key: string]: OhlcData | null }
-  latestPrices: LatestPrices | undefined
+  latestPrices: LatestPrices
   orderBookData: any
   greedAndFearData: any
 }
@@ -401,24 +401,11 @@ function LoadOhlcvData() {
   return ohlcData
 }
 
-export function getTopOfBook(side: string, data: OrderBookData) {
-  const index = side === 'bid' ? Object.keys(data.bid).length - 1 : 0
-  return Number(
-    Object.keys(data[side])
-      .map(Number)
-      .sort((a, b) => a - b)[index],
-  )
-}
-
-function RealTimePublicStream(trades: Trade[]) {
-  const filterState = useSelector(
-    (state: { filters: FilterState }) => state.filters,
-  )
-  const [orderBookData, setOrderBookData] = useState<OrderBookData>()
+function LoadLatestPrices(trades: Trade[]) {
   const [latestPrices, setLatestPrices] = useState<LatestPrices>({})
-  const [socketData, setSocketData] = useState<any>(null)
-  const [resetSwitch, setResetSwitch] = useState<boolean>(false)
-  const [channels, setChannels]
+  const selectedPair = useSelector(
+    (state: { filters: FilterState }) => state.filters.pair,
+  )
 
   async function fetchLatestPrice(pair: string) {
     if (pair !== undefined) {
@@ -444,7 +431,47 @@ function RealTimePublicStream(trades: Trade[]) {
 
   useEffect(() => {
     loadForAllHoldings()
+    const pricesInterval = setInterval(() => {
+      loadForAllHoldings()
+    }, 60000)
+    return () => {
+      clearInterval(pricesInterval)
+    }
   }, [trades])
+
+  useEffect(() => {
+    const holdings = getHoldingVolumesFromTrades(trades)
+    if (!Object.keys(holdings['current']).includes(selectedPair)) {
+      fetchLatestPrice(selectedPair)
+      const ohlcInterval = setInterval(() => {
+        fetchLatestPrice(selectedPair)
+      }, 60000)
+      fetchLatestPrice(selectedPair)
+      return () => {
+        clearInterval(ohlcInterval)
+      }
+    }
+  }, [])
+
+  return latestPrices
+}
+
+export function getTopOfBook(side: string, data: OrderBookData) {
+  const index = side === 'bid' ? Object.keys(data.bid).length - 1 : 0
+  return Number(
+    Object.keys(data[side])
+      .map(Number)
+      .sort((a, b) => a - b)[index],
+  )
+}
+
+function LoadOrderBook() {
+  const filterState = useSelector(
+    (state: { filters: FilterState }) => state.filters,
+  )
+  const [orderBookData, setOrderBookData] = useState<OrderBookData>()
+  const [socketData, setSocketData] = useState<any>(null)
+  const [resetSwitch, setResetSwitch] = useState<boolean>(false)
 
   function formatOrderBook(rawOrderBook: any) {
     const formattedBook: any = { bid: {}, ask: {} }
@@ -508,13 +535,6 @@ function RealTimePublicStream(trades: Trade[]) {
     setResetSwitch(false)
   }, [resetSwitch, filterState.exchange, filterState.pair])
 
-  function getAllChannels() {
-    let channels = []
-    Object.keys(latestPrices).forEach((pair: string) => {
-      fetchLatestPrice(pair)
-    })
-  }
-
   useEffect(() => {
     if (orderBookData) {
       const fomattedPair = filterState.pair.replace('/', '-').toUpperCase()
@@ -534,10 +554,6 @@ function RealTimePublicStream(trades: Trade[]) {
         if (newData.delta) {
           const newData = JSON.parse(event.data)
           setSocketData(newData['delta'])
-        } else {
-          let pair = newData.symbol
-          pair = pair.replace('-', '/')
-          latestPrices
         }
       }
       return () => {
@@ -554,7 +570,7 @@ function RealTimePublicStream(trades: Trade[]) {
     }
   }, [socketData])
 
-  return [orderBookData!, latestPrices!] as [OrderBookData, LatestPrices]
+  return orderBookData
 }
 
 function LoadGreedAndFear() {
@@ -574,7 +590,7 @@ function LoadGreedAndFear() {
   return data
 }
 
-export function GetTradingData(): tradingDataDef {
+export function GetTradingData() {
   const coinMarketCapMapping = LoadStaticData('coinmarketcap_info')
   const cryptoMetaData = LoadCryptoMetaData(coinMarketCapMapping)
   const exchanges = LoadStaticData('exchanges')
@@ -585,8 +601,8 @@ export function GetTradingData(): tradingDataDef {
   const screeningData = LoadScreeningData()
   const noDataAnimation = LoadNoDataAnimation()
   const ohlcvData = LoadOhlcvData()
-  const [orderBookData, latestPrices]: [OrderBookData, LatestPrices] =
-    RealTimePublicStream(trades)
+  const latestPrices = LoadLatestPrices(trades)
+  const orderBookData = LoadOrderBook()
   const greedAndFearData = LoadGreedAndFear()
 
   return {

@@ -43,11 +43,6 @@ function HoldingsTable(data: { tradingData: tradingDataDef }) {
       filter: true,
     }
   }, [])
-  const getRowClass = (params: any) => {
-    if (params.data.pair === selectedPair) {
-      return 'ag-selected-row'
-    }
-  }
 
   useEffect(() => {
     const holdings = getHoldingVolumesFromTrades(data.tradingData.trades)
@@ -87,7 +82,7 @@ function HoldingsTable(data: { tradingData: tradingDataDef }) {
   }
 
   function getUSDValue(pair: string, volume: number) {
-    const lastPrice = data.tradingData.latestPrices[pair]
+    const lastPrice = data.tradingData.latestPrices![pair]
     if (lastPrice === undefined || lastPrice === null) {
       return 'N/A'
     } else {
@@ -126,9 +121,7 @@ function HoldingsTable(data: { tradingData: tradingDataDef }) {
         defaultColDef={defaultColDef}
         onRowClicked={(r) => handleClick(r)}
         rowSelection={'single'}
-        getRowClass={getRowClass}
         animateRows={true}
-        enableCellChangeFlash={true}
       />
     </div>
   )

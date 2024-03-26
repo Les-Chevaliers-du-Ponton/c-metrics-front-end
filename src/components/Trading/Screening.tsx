@@ -103,22 +103,10 @@ function Screening(data: { tradingData: tradingDataDef }) {
   )
 
   useEffect(() => {
-    const interval = setInterval(() => {
-      if (gridApi) {
-        gridApi.setGridOption('rowData', data.tradingData.screeningData)
-      }
-    }, 2000)
-    setDefaultGridSettings()
-    return () => {
-      clearInterval(interval)
+    if (gridApi && data.tradingData.screeningData) {
+      gridApi.setGridOption('rowData', data.tradingData.screeningData)
     }
-  }, [gridApi, data.tradingData.screeningData])
-
-  const getRowClass = (params: any) => {
-    if (params.data.pair === selectedPair) {
-      return 'ag-selected-row'
-    }
-  }
+  }, [gridApi, JSON.stringify(data.tradingData.screeningData)])
 
   function setDefaultGridSettings() {
     if (gridApi) {
@@ -177,7 +165,6 @@ function Screening(data: { tradingData: tradingDataDef }) {
             onRowClicked={(r) => handleClick(r)}
             onGridReady={onGridReady}
             rowSelection={'single'}
-            getRowClass={getRowClass}
             suppressCopyRowsToClipboard={true}
           />
         </div>

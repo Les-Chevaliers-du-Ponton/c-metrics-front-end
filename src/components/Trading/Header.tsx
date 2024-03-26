@@ -500,7 +500,7 @@ export function PairSelectionWidget(data: { tradingData: tradingDataDef }) {
   }, [
     filterState.pair,
     filterState.exchange,
-    data.tradingData.coinMarketCapMapping,
+    JSON.stringify(data.tradingData.coinMarketCapMapping),
   ])
   useEffect(() => {
     if (cryptoInfo) {
@@ -515,15 +515,12 @@ export function PairSelectionWidget(data: { tradingData: tradingDataDef }) {
         Object.keys(cryptoInfo).length > 0 &&
         data.tradingData.cryptoMetaData.length !== 0
       ) {
-        setCryptoMetaData(data.tradingData.cryptoMetaData.data[cryptoInfo.id])
+        let newData = data.tradingData.cryptoMetaData
+        newData.logo = `https://s2.coinmarketcap.com/static/img/coins/64x64/${newData[0].id}.png`
+        setCryptoMetaData(newData)
       }
     }
-  }, [
-    filterState.pair,
-    filterState.exchange,
-    cryptoInfo,
-    data.tradingData.cryptoMetaData.data,
-  ])
+  }, [cryptoInfo])
 
   return (
     <div>
@@ -551,7 +548,7 @@ export function PairSelectionWidget(data: { tradingData: tradingDataDef }) {
             cryptoMetaData === undefined ? (
               <CircularProgress />
             ) : (
-              <Avatar src={cryptoMetaData?.logo} />
+              <Avatar src={cryptoInfo?.logo} />
             )
           }
         >
