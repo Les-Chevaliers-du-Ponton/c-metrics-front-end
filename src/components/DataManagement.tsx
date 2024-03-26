@@ -430,28 +430,12 @@ function LoadLatestPrices(trades: Trade[]) {
   }
 
   useEffect(() => {
-    loadForAllHoldings()
-    const pricesInterval = setInterval(() => {
-      loadForAllHoldings()
-    }, 60000)
-    return () => {
-      clearInterval(pricesInterval)
-    }
-  }, [trades])
-
-  useEffect(() => {
     const holdings = getHoldingVolumesFromTrades(trades)
     if (!Object.keys(holdings['current']).includes(selectedPair)) {
+      loadForAllHoldings()
       fetchLatestPrice(selectedPair)
-      const ohlcInterval = setInterval(() => {
-        fetchLatestPrice(selectedPair)
-      }, 60000)
-      fetchLatestPrice(selectedPair)
-      return () => {
-        clearInterval(ohlcInterval)
-      }
     }
-  }, [])
+  }, [trades])
 
   return latestPrices
 }

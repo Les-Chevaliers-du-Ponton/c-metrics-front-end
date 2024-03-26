@@ -1,7 +1,6 @@
 import { Box, CssBaseline, Tab, Tabs } from '@mui/material'
 import React from 'react'
 import { Col, Container, Row } from 'react-bootstrap'
-import { Responsive, WidthProvider } from 'react-grid-layout'
 import 'react-grid-layout/css/styles.css'
 import { useDispatch } from 'react-redux'
 import 'react-resizable/css/styles.css'
@@ -52,6 +51,26 @@ function BottomLeftContainer(data: { tradingData: tradingDataDef }) {
   )
 }
 
+function Twitter() {
+  return (
+    <div>
+      <a
+        className="twitter-timeline"
+        data-height="300"
+        data-theme="dark"
+        href="https://twitter.com/ethereum?ref_src=twsrc%5Etfw"
+      >
+        Tweets by ethereum
+      </a>{' '}
+      <script
+        async
+        src="https://platform.twitter.com/widgets.js"
+        charSet="utf-8"
+      ></script>
+    </div>
+  )
+}
+
 function BottomRightContainer(data: { tradingData: tradingDataDef }) {
   const [value, setValue] = React.useState('news')
 
@@ -70,10 +89,12 @@ function BottomRightContainer(data: { tradingData: tradingDataDef }) {
           <Tab value="news" label="News" sx={{ height: '30px' }} />
           <Tab value="screening" label="Screening" />
           <Tab value="economic-calendar" label="Economic Calendar" />
+          <Tab value="twitter" label="Twitter" />
         </Tabs>
         {value === 'news' && <News tradingData={data.tradingData} />}
         {value === 'screening' && <Screening tradingData={data.tradingData} />}
         {value === 'economic-calendar' && <EconomicCalendar />}
+        {value === 'twitter' && <Twitter />}
       </Box>
     </div>
   )
