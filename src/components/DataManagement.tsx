@@ -5,7 +5,7 @@ import { filterSlice, type FilterState } from './StateManagement'
 
 axios.defaults.withCredentials = true
 
-export const HOST = '34.230.57.182'
+export const HOST = '3.236.217.214'
 export const PORT = 8000
 
 export interface tradingDataDef {
@@ -19,7 +19,7 @@ export interface tradingDataDef {
   screeningData: any
   noDataAnimation: any
   ohlcvData: { [key: string]: OhlcData | null }
-  latestPrices: LatestPrices
+  latestPrices: LatestPrices | undefined
   orderBookData: any
   greedAndFearData: any
 }
@@ -116,16 +116,21 @@ export function retrieveInfoFromCoinMarketCap(
   pair: string,
   coinMarketCapMapping: any,
 ): any {
-  const base = pair.slice(0, pair.search('/'))
+  const separator = pair.includes('-') ? '-' : '/'
+  const base = pair.slice(0, pair.search(separator))
   let assetInfo: any[] = []
   if (Object.keys(coinMarketCapMapping).length > 0) {
-    coinMarketCapMapping.data.forEach((element: any) => {
+    coinMarketCapMapping.forEach((element: any) => {
       if (element.symbol === base) {
         assetInfo.push(element)
       }
     })
   }
-  return assetInfo[0]
+  const newData = assetInfo[0]
+  if (newData) {
+    newData.logo = `https://s2.coinmarketcap.com/static/img/coins/64x64/${newData.id}.png`
+  }
+  return newData
 }
 
 function LoadStaticData(endpoint: string) {
@@ -276,8 +281,11 @@ function LoadScreeningData() {
     (state: { filters: FilterState }) => state.filters.pair,
   )
   const [screeningData, setScreeningData] = useState<any>([])
+
+  let timeoutId: NodeJS.Timeout | null = null
+
   useEffect(() => {
-    const wsUrl = 'ws://localhost:8795'
+    const wsUrl = `ws://${HOST}:${PORT}/ws/screening/`
     const socket = new WebSocket(wsUrl)
     socket.onerror = () => {
       console.error('Error with screening service')
@@ -287,10 +295,24 @@ function LoadScreeningData() {
       console.log('Connected to screening service')
       setScreeningData([])
     }
+
     socket.onmessage = (event) => {
-      const formattedData = JSON.parse(event.data)
-      setScreeningData(formattedData)
+      if (!timeoutId) {
+        const formattedData: any = []
+        const rawData = JSON.parse(event.data)
+        Object.keys(rawData).forEach((pair: string) => {
+          let record = JSON.parse(rawData[pair])
+          record['pair'] = pair
+          formattedData.push(record)
+        })
+        setScreeningData(formattedData)
+
+        timeoutId = setTimeout(() => {
+          timeoutId = null
+        }, 1000)
+      }
     }
+
     return () => {
       if (socket.readyState === 1) {
         socket.close()
@@ -379,11 +401,24 @@ function LoadOhlcvData() {
   return ohlcData
 }
 
-function LoadLatestPrices(trades: Trade[]) {
-  const [latestPrices, setLatestPrices] = useState<LatestPrices>({})
-  const selectedPair = useSelector(
-    (state: { filters: FilterState }) => state.filters.pair,
+export function getTopOfBook(side: string, data: OrderBookData) {
+  const index = side === 'bid' ? Object.keys(data.bid).length - 1 : 0
+  return Number(
+    Object.keys(data[side])
+      .map(Number)
+      .sort((a, b) => a - b)[index],
   )
+}
+
+function RealTimePublicStream(trades: Trade[]) {
+  const filterState = useSelector(
+    (state: { filters: FilterState }) => state.filters,
+  )
+  const [orderBookData, setOrderBookData] = useState<OrderBookData>()
+  const [latestPrices, setLatestPrices] = useState<LatestPrices>({})
+  const [socketData, setSocketData] = useState<any>(null)
+  const [resetSwitch, setResetSwitch] = useState<boolean>(false)
+  const [channels, setChannels]
 
   async function fetchLatestPrice(pair: string) {
     if (pair !== undefined) {
@@ -409,47 +444,7 @@ function LoadLatestPrices(trades: Trade[]) {
 
   useEffect(() => {
     loadForAllHoldings()
-    const pricesInterval = setInterval(() => {
-      loadForAllHoldings()
-    }, 60000)
-    return () => {
-      clearInterval(pricesInterval)
-    }
   }, [trades])
-
-  useEffect(() => {
-    const holdings = getHoldingVolumesFromTrades(trades)
-    if (!Object.keys(holdings['current']).includes(selectedPair)) {
-      fetchLatestPrice(selectedPair)
-      const ohlcInterval = setInterval(() => {
-        fetchLatestPrice(selectedPair)
-      }, 60000)
-      fetchLatestPrice(selectedPair)
-      return () => {
-        clearInterval(ohlcInterval)
-      }
-    }
-  }, [])
-
-  return latestPrices
-}
-
-export function getTopOfBook(side: string, data: OrderBookData) {
-  const index = side === 'bid' ? Object.keys(data.bid).length - 1 : 0
-  return Number(
-    Object.keys(data[side])
-      .map(Number)
-      .sort((a, b) => a - b)[index],
-  )
-}
-
-function LoadOrderBook() {
-  const filterState = useSelector(
-    (state: { filters: FilterState }) => state.filters,
-  )
-  const [orderBookData, setOrderBookData] = useState<OrderBookData>()
-  const [socketData, setSocketData] = useState<any>(null)
-  const [resetSwitch, setResetSwitch] = useState<boolean>(false)
 
   function formatOrderBook(rawOrderBook: any) {
     const formattedBook: any = { bid: {}, ask: {} }
@@ -513,10 +508,18 @@ function LoadOrderBook() {
     setResetSwitch(false)
   }, [resetSwitch, filterState.exchange, filterState.pair])
 
+  function getAllChannels() {
+    let channels = []
+    Object.keys(latestPrices).forEach((pair: string) => {
+      fetchLatestPrice(pair)
+    })
+  }
+
   useEffect(() => {
     if (orderBookData) {
       const fomattedPair = filterState.pair.replace('/', '-').toUpperCase()
-      const wsUrl = `ws://${HOST}:${PORT}/ws/live_data/?pairs=${filterState.exchange.toUpperCase()}-${fomattedPair}`
+      const key = `${filterState.exchange.toUpperCase()}-${fomattedPair}`
+      const wsUrl = `ws://${HOST}:${PORT}/ws/live_data/?channels=trades-${key},book-${key}`
       const socket = new WebSocket(wsUrl)
       socket.onerror = () => {
         console.warn(
@@ -531,6 +534,10 @@ function LoadOrderBook() {
         if (newData.delta) {
           const newData = JSON.parse(event.data)
           setSocketData(newData['delta'])
+        } else {
+          let pair = newData.symbol
+          pair = pair.replace('-', '/')
+          latestPrices
         }
       }
       return () => {
@@ -547,7 +554,7 @@ function LoadOrderBook() {
     }
   }, [socketData])
 
-  return orderBookData
+  return [orderBookData!, latestPrices!] as [OrderBookData, LatestPrices]
 }
 
 function LoadGreedAndFear() {
@@ -567,7 +574,7 @@ function LoadGreedAndFear() {
   return data
 }
 
-export function GetTradingData() {
+export function GetTradingData(): tradingDataDef {
   const coinMarketCapMapping = LoadStaticData('coinmarketcap_info')
   const cryptoMetaData = LoadCryptoMetaData(coinMarketCapMapping)
   const exchanges = LoadStaticData('exchanges')
@@ -578,8 +585,8 @@ export function GetTradingData() {
   const screeningData = LoadScreeningData()
   const noDataAnimation = LoadNoDataAnimation()
   const ohlcvData = LoadOhlcvData()
-  const latestPrices = LoadLatestPrices(trades)
-  const orderBookData = LoadOrderBook()
+  const [orderBookData, latestPrices]: [OrderBookData, LatestPrices] =
+    RealTimePublicStream(trades)
   const greedAndFearData = LoadGreedAndFear()
 
   return {
