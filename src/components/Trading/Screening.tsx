@@ -166,6 +166,7 @@ function Screening(data: { tradingData: tradingDataDef }) {
             onGridReady={onGridReady}
             rowSelection={'single'}
             suppressCopyRowsToClipboard={true}
+            //https://github.com/ag-grid/ag-grid/issues/7472
           />
         </div>
       </div>
