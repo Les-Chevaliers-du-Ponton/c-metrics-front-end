@@ -34,7 +34,7 @@ import axios from 'axios'
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
 import '../../css/charts.css'
-import { type Order, type tradingDataDef } from '../DataManagement'
+import { HOST, PORT, type Order, type tradingDataDef } from '../DataManagement'
 import { filterSlice, type FilterState } from '../StateManagement'
 
 interface TableProps {
@@ -378,7 +378,7 @@ function OrderTable({ orders }: TableProps) {
   }
 
   async function cancelOrder(orderDimKey: string) {
-    const endpoint = 'http://127.0.0.1:8000/cancel_order/'
+    const endpoint = `http://${HOST}:${PORT}/cancel_order/`
     const payload = { order_dim_key: orderDimKey }
     await axios.post(endpoint, JSON.stringify(payload), {
       headers: {

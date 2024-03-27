@@ -341,10 +341,14 @@ export function TradingViewWidget(props: TradingViewProps) {
       'https://s3.tradingview.com/external-embedding/embed-widget-advanced-chart.js'
     script.type = 'text/javascript'
     script.async = true
+    const formattedPair = props.pair
+      .replace('-', '')
+      .replace('/', '')
+      .toUpperCase()
     script.innerHTML = `
         {
           "autosize": true,
-          "symbol": "${props.exchange.toUpperCase()}:${props.pair.replace('/', '').toUpperCase()}",
+          "symbol": "${props.exchange.toUpperCase()}:${formattedPair}",
           "interval": "D",
           "timezone": "Etc/UTC",
           "theme": "dark",
@@ -374,7 +378,7 @@ export function TradingViewWidget(props: TradingViewProps) {
   }, [props.pair, props.exchange])
 
   return (
-    <div style={{ height: '559px' }}>
+    <div style={{ height: '550px' }}>
       <div
         className="tradingview-widget-container"
         ref={container! as any}
