@@ -9,13 +9,13 @@ import {
   type tradingDataDef,
 } from '../components/DataManagement'
 import { filterSlice } from '../components/StateManagement'
-import { TradingChart } from '../components/Trading/Chart'
 import CreateOrderWidget from '../components/Trading/CreateOrder'
 import EconomicCalendar from '../components/Trading/EconomicCalendar'
 import { TopBar } from '../components/Trading/Header'
 import Holdings from '../components/Trading/Holdings'
 import News from '../components/Trading/News'
 import Orders from '../components/Trading/Orders'
+import { PairContainer } from '../components/Trading/PairContainer'
 import Screening from '../components/Trading/Screening'
 import MiniDrawer from '../components/Trading/SideBar'
 import Trades from '../components/Trading/TradeHistory'
@@ -111,7 +111,7 @@ function Trading() {
         <MiniDrawer />
         <Box component="main" sx={{ flexGrow: 1 }}>
           <Container fluid>
-            <TradingChart tradingData={tradingData} />
+            <PairContainer tradingData={tradingData} />
             <Row style={{ height: '100%' }}>
               <Col style={{ maxWidth: '50%' }}>
                 <BottomLeftContainer tradingData={tradingData} />

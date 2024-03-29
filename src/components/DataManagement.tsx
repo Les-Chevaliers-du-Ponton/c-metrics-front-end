@@ -14,13 +14,13 @@ export interface tradingDataDef {
   exchanges: any
   markets: any
   news: NewsArticle[]
-  orders: Order[]
-  trades: Trade[]
-  screeningData: any
   noDataAnimation: any
-  ohlcvData: { [key: string]: OhlcData | null }
-  latestPrices: LatestPrices
-  orderBookData: any
+  publicDataStream: {
+    orderBook: OrderBookData
+    latestPrices: LatestPrices
+    ohlcvData: { [key: string]: OhlcData | null }
+  }
+  privateDataStream: { orders: Order[]; trades: Trade[]; screeningData: any }
   greedAndFearData: any
 }
 
@@ -445,7 +445,7 @@ export function getTopOfBook(side: string, data: OrderBookData) {
   )
 }
 
-function LoadOrderBook() {
+function PublicDataStream() {
   const filterState = useSelector(
     (state: { filters: FilterState }) => state.filters,
   )
@@ -581,7 +581,7 @@ export function GetTradingData() {
   const noDataAnimation = LoadNoDataAnimation()
   const ohlcvData = LoadOhlcvData()
   const latestPrices = LoadLatestPrices(trades)
-  const orderBookData = LoadOrderBook()
+  const publicDataStream = PublicDataStream()
   const greedAndFearData = LoadGreedAndFear()
 
   return {
@@ -596,7 +596,7 @@ export function GetTradingData() {
     noDataAnimation,
     ohlcvData,
     latestPrices,
-    orderBookData,
+    publicDataStream,
     greedAndFearData,
   }
 }
