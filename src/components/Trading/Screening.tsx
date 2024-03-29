@@ -10,10 +10,10 @@ import {
 } from 'ag-grid-community'
 import { AgGridReact } from 'ag-grid-react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { useDispatch, useSelector } from 'react-redux'
+import { useDispatch } from 'react-redux'
 import '../../css/charts.css'
 import { tradingDataDef } from '../DataManagement'
-import { FilterState, filterSlice } from '../StateManagement'
+import { filterSlice } from '../StateManagement'
 
 function Screening(data: { tradingData: tradingDataDef }) {
   const gridRef = useRef<AgGridReact>(null)
@@ -32,6 +32,7 @@ function Screening(data: { tradingData: tradingDataDef }) {
     {
       field: '24h_change',
       valueFormatter: (params) => defaultValueFormat(params),
+      cellClassRules: { 'bold-and-red': 'x<1' },
       cellStyle: (params) => {
         return { color: params.value < 0 ? 'red' : 'green' }
       },
@@ -98,36 +99,47 @@ function Screening(data: { tradingData: tradingDataDef }) {
   }, [])
 
   const dispatch = useDispatch()
-  const selectedPair = useSelector(
-    (state: { filters: FilterState }) => state.filters.pair,
-  )
 
   useEffect(() => {
     if (gridApi && data.tradingData.screeningData) {
-      gridApi.setGridOption('rowData', data.tradingData.screeningData)
+      const formattedData = formatGridData()
+      gridApi.setGridOption('rowData', formattedData)
     }
   }, [gridApi, JSON.stringify(data.tradingData.screeningData)])
 
-  function setDefaultGridSettings() {
+  function setDefaultGridSettings(gridApi: any) {
     if (gridApi) {
       const filters = {
-        book_imbalance: {
-          type: 'notBlank',
-        },
+        // book_imbalance: {
+        //   type: 'notBlank',
+        // },
         potential_gain: {
           type: 'greaterThan',
-          filter: 0.1,
+          filter: 0.05,
         },
       }
       gridApi.setFilterModel(filters)
+      gridApi.applyColumnState({
+        state: [{ colId: 'technicals_score', sort: 'desc' }],
+        defaultState: { sort: null },
+      })
     }
   }
 
+  function formatGridData() {
+    let formattedData: any = []
+    Object.keys(data.tradingData.screeningData).forEach((pair: string) => {
+      formattedData.push(data.tradingData.screeningData[pair])
+    })
+    return formattedData
+  }
+
   const onGridReady = useCallback((event: GridReadyEvent) => {
-    setRowData(data.tradingData.screeningData)
+    const formattedData = formatGridData()
+    setRowData(formattedData)
     setGridApi(event.api)
-    event.api.setGridOption('rowData', data.tradingData.screeningData)
-    setDefaultGridSettings()
+    event.api.setGridOption('rowData', formattedData)
+    setDefaultGridSettings(event.api)
   }, [])
 
   const handleClick = (clickedPair: RowClickedEvent<any>) => {

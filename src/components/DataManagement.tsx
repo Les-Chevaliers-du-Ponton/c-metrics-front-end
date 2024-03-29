@@ -5,7 +5,7 @@ import { filterSlice, type FilterState } from './StateManagement'
 
 axios.defaults.withCredentials = true
 
-export const HOST = '3.236.217.214'
+export const HOST = '44.201.218.154'
 export const PORT = 8000
 
 export interface tradingDataDef {
@@ -276,49 +276,45 @@ function LoadNews(coinMarketCapMapping: any) {
 }
 
 function LoadScreeningData() {
+  const throtle = 0
   const dispatch = useDispatch()
   const selectedPair = useSelector(
     (state: { filters: FilterState }) => state.filters.pair,
   )
-  const [screeningData, setScreeningData] = useState<any>([])
-
-  let timeoutId: NodeJS.Timeout | null = null
+  const [screeningData, setScreeningData] = useState<any>({})
+  const [isRunning, setIsRunning] = useState<boolean>(false)
 
   useEffect(() => {
-    const wsUrl = `ws://${HOST}:${PORT}/ws/screening/`
-    const socket = new WebSocket(wsUrl)
-    socket.onerror = () => {
-      console.error('Error with screening service')
-      setScreeningData(false)
-    }
-    socket.onopen = () => {
-      console.log('Connected to screening service')
-      setScreeningData([])
-    }
+    if (!isRunning) {
+      setIsRunning(true)
+      const wsUrl = `ws://${HOST}:${PORT}/ws/screening/`
+      const socket = new WebSocket(wsUrl)
+      socket.onerror = () => {
+        console.error('Error with screening service')
+        setScreeningData(false)
+      }
+      socket.onopen = () => {
+        console.log('Connected to screening service')
+        setScreeningData([])
+      }
 
-    socket.onmessage = (event) => {
-      if (!timeoutId) {
-        const formattedData: any = []
+      socket.onmessage = (event) => {
         const rawData = JSON.parse(event.data)
         Object.keys(rawData).forEach((pair: string) => {
           let record = JSON.parse(rawData[pair])
           record['pair'] = pair
-          formattedData.push(record)
+          screeningData[pair] = record
         })
-        setScreeningData(formattedData)
+        setScreeningData(screeningData)
+      }
 
-        timeoutId = setTimeout(() => {
-          timeoutId = null
-        }, 1000)
+      return () => {
+        if (socket.readyState === 1) {
+          socket.close()
+        }
       }
     }
-
-    return () => {
-      if (socket.readyState === 1) {
-        socket.close()
-      }
-    }
-  }, [])
+  }, [isRunning])
 
   useEffect(() => {
     if (screeningData.length > 0) {
@@ -328,7 +324,7 @@ function LoadScreeningData() {
         }
       })
     }
-  }, [selectedPair, screeningData])
+  }, [selectedPair, JSON.stringify(screeningData)])
 
   return screeningData
 }
@@ -521,8 +517,7 @@ function LoadOrderBook() {
 
   useEffect(() => {
     if (orderBookData) {
-      const fomattedPair = filterState.pair.replace('/', '-').toUpperCase()
-      const key = `${filterState.exchange.toUpperCase()}-${fomattedPair}`
+      const key = `${filterState.exchange.toUpperCase()}-${filterState.pair.replace('/', '-')}`
       const wsUrl = `ws://${HOST}:${PORT}/ws/live_data/?channels=trades-${key},book-${key}`
       const socket = new WebSocket(wsUrl)
       socket.onerror = () => {

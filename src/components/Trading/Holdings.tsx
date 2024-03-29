@@ -10,6 +10,8 @@ import {
   tradingDataDef,
 } from '../DataManagement'
 import { FilterState, filterSlice } from '../StateManagement'
+import { renderCellWithImage } from '../../utils/agGrid'
+import { getPairLogo } from '../../utils/common'
 
 type FormattedHoldings = {
   pair: string
@@ -27,12 +29,17 @@ function HoldingsTable(data: { tradingData: tradingDataDef }) {
   const [gridData] = useState<FormattedHoldings[]>(getFormattedHoldings)
   const gridStyle = useMemo(() => ({ width: '100%', height: '210px' }), [])
   const dispatch = useDispatch()
-  const selectedPair = useSelector(
-    (state: { filters: FilterState }) => state.filters.pair,
-  )
 
   const [columnDefs] = useState<any>([
-    { field: 'pair' },
+    {
+      field: 'pair',
+      cellRenderer: (params: { value: string }) => {
+        return renderCellWithImage(
+          params.value,
+          getPairLogo(data.tradingData, params.value),
+        )
+      },
+    },
     { field: 'volume', cellRenderer: 'agAnimateShowChangeCellRenderer' },
     { field: 'usdValue', cellRenderer: 'agAnimateShowChangeCellRenderer' },
     { field: 'hasOpenSells' },

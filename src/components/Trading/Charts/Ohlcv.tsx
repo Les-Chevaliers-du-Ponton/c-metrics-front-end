@@ -285,7 +285,7 @@ export function CryptoStationOhlcChart(props: OhlcChartProps) {
     props.cryptoInfo,
     props.cryptoMetaData,
     props.pair,
-    props.pairScoreDetails,
+    JSON.stringify(props.pairScoreDetails),
     props.selectedArticle,
     props.selectedOrder,
   ])
