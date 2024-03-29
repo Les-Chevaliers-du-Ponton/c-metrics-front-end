@@ -14,13 +14,13 @@ export interface tradingDataDef {
   exchanges: any
   markets: any
   news: NewsArticle[]
+  orders: Order[]
+  trades: Trade[]
+  screeningData: any
   noDataAnimation: any
-  publicDataStream: {
-    orderBook: OrderBookData
-    latestPrices: LatestPrices
-    ohlcvData: { [key: string]: OhlcData | null }
-  }
-  privateDataStream: { orders: Order[]; trades: Trade[]; screeningData: any }
+  ohlcvData: { [key: string]: OhlcData | null }
+  latestPrices: LatestPrices
+  orderBookData: any
   greedAndFearData: any
 }
 
@@ -414,7 +414,7 @@ function LoadLatestPrices(trades: Trade[]) {
           latestPublicTrades[latestPublicTrades.length - 1]['price'] || 0
         latestPrices[pair] = latestPrice
         setLatestPrices(latestPrices)
-      } catch (error) {}
+      } catch (error) { }
     }
   }
 
@@ -445,7 +445,7 @@ export function getTopOfBook(side: string, data: OrderBookData) {
   )
 }
 
-function PublicDataStream() {
+function LoadOrderBook() {
   const filterState = useSelector(
     (state: { filters: FilterState }) => state.filters,
   )
@@ -455,12 +455,12 @@ function PublicDataStream() {
 
   function formatOrderBook(rawOrderBook: any) {
     const formattedBook: any = { bid: {}, ask: {} }
-    ;['bids', 'asks'].forEach((side: string) => {
-      rawOrderBook[side].forEach((level: number[]) => {
-        const formattedSide = side.slice(0, -1)
-        formattedBook[formattedSide][level[0]] = level[1]
+      ;['bids', 'asks'].forEach((side: string) => {
+        rawOrderBook[side].forEach((level: number[]) => {
+          const formattedSide = side.slice(0, -1)
+          formattedBook[formattedSide][level[0]] = level[1]
+        })
       })
-    })
     return formattedBook
   }
 
@@ -470,29 +470,29 @@ function PublicDataStream() {
       const bestAsk = getTopOfBook('ask', orderBookData)
       const mid = (bestBid + bestAsk) / 2
       const data = JSON.parse(socketData)
-      ;['bid', 'ask'].forEach((side: string) => {
-        data[side].forEach((newRecord: [number, number]) => {
-          const price = newRecord[0]
-          const volume = newRecord[1]
-          if (volume === 0) {
-            delete orderBookData[side][price]
-          } else {
-            if (side === 'bid' && (bestBid > bestAsk || price > bestAsk)) {
-              delete orderBookData['ask'][bestAsk]
-            } else if (
-              side === 'ask' &&
-              (bestAsk < bestBid || price < bestBid)
-            ) {
-              delete orderBookData['bid'][bestBid]
-            } else if (mid < bestBid || mid > bestAsk) {
-              delete orderBookData['bid'][bestBid]
-              delete orderBookData['ask'][bestAsk]
+        ;['bid', 'ask'].forEach((side: string) => {
+          data[side].forEach((newRecord: [number, number]) => {
+            const price = newRecord[0]
+            const volume = newRecord[1]
+            if (volume === 0) {
+              delete orderBookData[side][price]
             } else {
-              orderBookData[side][price] = volume
+              if (side === 'bid' && (bestBid > bestAsk || price > bestAsk)) {
+                delete orderBookData['ask'][bestAsk]
+              } else if (
+                side === 'ask' &&
+                (bestAsk < bestBid || price < bestBid)
+              ) {
+                delete orderBookData['bid'][bestBid]
+              } else if (mid < bestBid || mid > bestAsk) {
+                delete orderBookData['bid'][bestBid]
+                delete orderBookData['ask'][bestAsk]
+              } else {
+                orderBookData[side][price] = volume
+              }
             }
-          }
+          })
         })
-      })
       setOrderBookData(orderBookData)
     }
   }
@@ -581,7 +581,7 @@ export function GetTradingData() {
   const noDataAnimation = LoadNoDataAnimation()
   const ohlcvData = LoadOhlcvData()
   const latestPrices = LoadLatestPrices(trades)
-  const publicDataStream = PublicDataStream()
+  const orderBookData = LoadOrderBook()
   const greedAndFearData = LoadGreedAndFear()
 
   return {
@@ -596,7 +596,7 @@ export function GetTradingData() {
     noDataAnimation,
     ohlcvData,
     latestPrices,
-    publicDataStream,
+    orderBookData,
     greedAndFearData,
   }
 }
